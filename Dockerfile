@@ -1,33 +1,24 @@
-FROM golang:1.21.0 AS builder
+FROM golang:1.22.0 AS builder
 
 WORKDIR /usr/src/app
 
-COPY . .
+COPY go.mod go.sum ./
 
-RUN go mod download \
-    && go get \
-    && go build .
+RUN go mod download
+
+COPY *.go ./
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /parcel-delivery
 
 
 
-##########################
-#         PROD           #
-##########################
-
-FROM golang:1.21.0 AS prod
-
-RUN addgroup --system gouser \
-    && adduser --system --shell /bin/false --group gouser
+FROM alpine:3.19
 
 WORKDIR /usr/src/goapp
 
-COPY --from=builder /usr/src/app/42-docker-final ./docker-file
+COPY --from=builder /parcel-delivery ./
 
 COPY ./tracker.db ./
 
-RUN chown -R gouser .
-
-USER gouser
-
-ENTRYPOINT ["./docker-file"]
+ENTRYPOINT ["./parcel-delivery"]
 
